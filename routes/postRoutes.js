@@ -1,10 +1,11 @@
 import express from "express";
-import { addLog  } from "../controllers/postController.js";
+import { addLog, getLogs  } from "../controllers/postController.js";
 
 
 const router = express.Router();
 
 router.post('/', addLog);
+router.get('/', getLogs);
 
 export default router;
 

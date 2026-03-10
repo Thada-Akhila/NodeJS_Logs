@@ -28,3 +28,50 @@ export const addLog = async (req, res) => {
 };
 
 
+
+export const getLogs = async (req, res) => {
+  try {
+
+    let {
+      page=1,
+      limit=10,
+      search = "",
+      sort
+    } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const skip = (page - 1) * limit;
+
+    let query = {};
+
+    // SEARCH
+    if (search) {
+      query.message = { $regex: search, $options: "i" };
+    }
+
+    // SORT
+    let sortOption = { createdAt: -1 };
+
+    
+    if (sort === "newest") sortOption = { createdAt: -1 };
+
+    const logs = await Log.find(query)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Log.countDocuments(query);
+
+    res.json({
+      page,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: logs
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
