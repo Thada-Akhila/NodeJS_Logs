@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './configs/db.js';
 import logsRouter from './routes/postRoutes.js';
+import { startLogWorker } from "./utils/logWorker.js";
 
 dotenv.config();
 connectDB();
@@ -14,7 +15,7 @@ app.use(express.json());
 
 
 app.use('/api/logs', logsRouter);
-
+startLogWorker();
 
 const PORT = process.env.PORT || 3001;
 

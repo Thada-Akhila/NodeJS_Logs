@@ -1,32 +1,37 @@
 import Log from "../models/Logs.js";
 
+import { logQueue } from "../utils/logQueue.js";
+
 export const addLog = async (req, res) => {
   try {
     const { level, message, source } = req.body;
 
-    if(!level || !message || !source){
-      return res.status(400).json({success:false, message: "all three level, message, source values required"});
+    if (!level || !message || !source) {
+      return res.status(400).json({
+        success: false,
+        message: "level, message, source required"
+      });
     }
 
-    const newLog = await Log.create({
+    logQueue.push({
       level,
       message,
-      source
+      source,
+      timestamp: new Date()
     });
 
     res.status(201).json({
       success: true,
-      data: newLog
+      message: "Log added to queue"
     });
 
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
   }
 };
-
 
 
 export const getLogs = async (req, res) => {
