@@ -1,5 +1,5 @@
 import Log from "../models/Logs.js";
-import { logQueue } from "./logQueue.js";
+import  logQueue  from "./logQueue.js";
 
 const BATCH_SIZE = 100;
 
@@ -12,7 +12,7 @@ export const startLogWorker = () => {
 
     try {
       await Log.insertMany(logsToInsert);
-      console.log(`Inserted ${logsToInsert.length} logs`);
+     console.log(`Inserted ${logsToInsert.length} logs. Queue remaining: ${logQueue.length}`);
     } catch (error) {
       console.error("Batch insert failed:", error);
     }

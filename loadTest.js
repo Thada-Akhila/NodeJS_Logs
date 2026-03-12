@@ -43,7 +43,7 @@ import fetch from "node-fetch";
 
 const URL = "http://localhost:3001/api/logs";
 
-const TOTAL_REQUESTS = 50000;
+const TOTAL_REQUESTS = 10000;
 const BATCH_SIZE = 100;
 
 async function sendLogs() {

@@ -1,1 +1,3 @@
-export const logQueue = [];
+const logQueue = [];
+
+export default logQueue;

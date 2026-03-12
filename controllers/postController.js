@@ -1,6 +1,6 @@
 import Log from "../models/Logs.js";
 
-import { logQueue } from "../utils/logQueue.js";
+import  logQueue  from "../utils/logQueue.js";
 
 export const addLog = async (req, res) => {
   try {
