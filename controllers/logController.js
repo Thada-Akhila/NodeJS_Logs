@@ -1,6 +1,6 @@
-import Log from "../models/Logs.js";
+import Log from "../models/Log.js";
 
-import  logQueue  from "../utils/logQueue.js";
+import redisClient from "../configs/redis.js";
 
 export const addLog = async (req, res) => {
   try {
@@ -13,22 +13,25 @@ export const addLog = async (req, res) => {
       });
     }
 
-    logQueue.push({
+    const log = JSON.stringify({
       level,
       message,
       source,
       timestamp: new Date()
     });
 
+    //  Push to Redis Queue
+    await redisClient.lpush("logs_queue", log);
+
     res.status(201).json({
       success: true,
-      message: "Log added to queue"
+      message: "Log added to Redis queue"
     });
 
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: error.message
     });
   }
 };

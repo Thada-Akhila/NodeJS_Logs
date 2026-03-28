@@ -27,6 +27,7 @@ This project was built to practice important **backend engineering concepts**, i
 * Observing **CPU and database behavior under stress**
 * Implementing **pagination for large datasets**
 * Improving performance with **batch processing**
+* Using **Redis for scalable queue-based architecture**
 
 ---
 
@@ -38,13 +39,47 @@ This project was built to practice important **backend engineering concepts**, i
 | Express.js    | API server          |
 | MongoDB Atlas | Cloud database      |
 | Mongoose      | MongoDB ODM         |
+| Redis         | In-memory queue     |
+| ioredis       | Redis client        |
 | JavaScript    | Application logic   |
+
+---
+
+# ⚡ Redis Integration (Day 4)
+
+To improve performance, Redis is used as a **queue system**.
+
+### Flow:
+
+1. API receives log request
+2. Log is pushed to Redis queue
+3. Background worker pulls logs in batches
+4. Logs are inserted into MongoDB
+
+### Example (Producer)
+
+```javascript
+await redisClient.lpush("logs_queue", JSON.stringify(log));
+```
+
+### Example (Worker)
+
+```javascript
+const log = await redisClient.rpop("logs_queue");
+```
+
+### Benefits:
+
+* Non-blocking API
+* High throughput
+* Reduced database load
+* Better scalability
 
 ---
 
 # 🏗 System Architecture
 
-Initial architecture:
+## Initial Architecture
 
 ```
 Client Request
@@ -56,31 +91,38 @@ Express API
 MongoDB insert
 ```
 
-This means:
-
 ```
 1 request → 1 database write
 ```
 
-Under heavy traffic this can create **database bottlenecks**.
+This approach creates **database bottlenecks under high traffic**.
 
-To improve performance, the system later introduces **log batching with a queue and background worker**.
+---
 
-Optimized architecture:
+## Optimized Architecture (With Redis Queue)
 
 ```
 Client Request
       ↓
-API Server
+API Server (Express)
       ↓
-Log Queue (Memory)
+Redis Queue (LPUSH)
       ↓
-Background Worker
+Background Worker (RPOP)
       ↓
 Batch Insert → MongoDB
 ```
 
-This reduces database load significantly.
+### Why Redis?
+
+Redis acts as a **fast in-memory queue** between the API and database.
+
+This ensures:
+
+* Fast API responses (non-blocking)
+* Asynchronous database processing
+* High traffic handling via queue buffering
+* Better scalability and fault tolerance
 
 ---
 
@@ -99,10 +141,10 @@ project
 │   └── logRoutes.js
 │
 ├── configs
-│   └── db.js
+│   ├── db.js
+│   └── redis.js
 │
 ├── utils
-│   ├── logQueue.js
 │   └── logWorker.js
 │
 ├── scripts
@@ -112,7 +154,8 @@ project
 │   └── learning
 │       ├── day-1-node-event-loop.md
 │       ├── day-2-load-testing.md
-│       └── day-3-log-batching.md
+│       ├── day-3-log-batching.md
+│       └── day-4-redis-queue.md
 │
 ├── server.js
 └── README.md
@@ -146,11 +189,9 @@ POST /api/logs
 
 ### Server Processing
 
-When a request arrives:
-
 1. Validate request body
 2. Add timestamp
-3. Store log entry
+3. Push log to Redis queue
 4. Return success response
 
 ### Example Response
@@ -158,12 +199,7 @@ When a request arrives:
 ```json
 {
   "success": true,
-  "data": {
-    "level": "info",
-    "message": "User logged in",
-    "source": "auth-service",
-    "timestamp": "2026-03-05T12:32:27.345Z"
-  }
+  "message": "Log added to Redis queue"
 }
 ```
 
@@ -198,138 +234,104 @@ GET /api/logs?page=1&limit=10
 
 # 🧪 Load Testing
 
-A script was created to simulate **high traffic** by sending thousands of requests to the logging API.
+A script was created to simulate **high traffic** by sending thousands of requests.
 
-Example load test script:
+### Key Improvements
 
-```javascript
-import axios from "axios";
-
-const URL = "http://localhost:3001/api/logs";
-
-async function sendLogs() {
-  const requests = [];
-
-  for (let i = 0; i < 10000; i++) {
-    requests.push(
-      axios.post(URL, {
-        level: "info",
-        message: "Load testing log",
-        source: "load-test-script"
-      })
-    );
-  }
-
-  await Promise.all(requests);
-
-  console.log("Finished sending logs 🚀");
-}
-
-sendLogs();
-```
+* Batch-based request sending
+* Error handling
+* Controlled concurrency
 
 ---
 
 # 📊 Performance Observations
 
-During load testing the following behaviors were observed.
-
 ### CPU Usage
 
-CPU usage increased significantly while handling thousands of concurrent requests.
+CPU usage increases during high traffic due to:
 
-Reasons:
-
-* HTTP request processing
+* HTTP request handling
 * JSON parsing
-* MongoDB write operations
+* Queue operations
 
 ---
 
 ### MongoDB Writes
 
-MongoDB successfully stored all **10,000 logs**.
-
-However writes were slower because the system performed:
-
-```
-1 request → 1 database insert
-```
-
-This highlights the need for **batch processing** in high-traffic systems.
-
----
-
-# ⚡ Performance Optimization
-
-To improve performance, the system introduces **log batching**.
-
-Instead of writing logs individually:
+Before optimization:
 
 ```
 10,000 requests → 10,000 inserts
 ```
 
-The optimized system performs:
+After optimization:
 
 ```
-10,000 requests → ~100 batch inserts
+10,000 requests → Redis queue → ~100 batch inserts
 ```
 
-This dramatically reduces:
+---
 
-* database load
-* CPU usage
-* network overhead
+# ⚡ Performance Optimization
+
+The system uses:
+
+## 1️⃣ Log Batching
+
+* Uses `insertMany()` instead of individual inserts
+
+## 2️⃣ Redis Queue
+
+* Decouples API from database
+
+### Final Flow:
+
+```
+High traffic → Redis queue → Worker → Batch insert
+```
+
+### Benefits:
+
+* Reduced database load
+* Faster API responses
+* Better scalability
 
 ---
 
 # 🧠 Key Backend Concepts Learned
 
-This project demonstrates several important backend engineering concepts:
-
-* Node.js **event loop and concurrency**
-* Handling **large numbers of API requests**
-* **Load testing** backend systems
-* Observing **runtime performance**
-* Using **batch processing for optimization**
+* Node.js **event loop & concurrency**
+* Handling **high-volume API traffic**
+* **Load testing backend systems**
+* **Queue-based architecture (Redis)**
+* **Batch processing for optimization**
+* Designing **non-blocking systems**
 
 ---
 
 # 📚 Learning Documentation
 
-Detailed daily learning notes are documented in the repository:
-
-* Day 1 – Node.js Event Loop
-* Day 2 – Load Testing the Logging API
-* Day 3 – Log Queue & Batch Insert Optimization
-
-Location:
+Daily learning notes are available in:
 
 ```
 docs/learning/
 ```
 
-These documents include:
+### Covered Topics:
 
-* concept explanations
-* code examples
-* architecture diagrams
-* performance observations
+* Day 1 – Node.js Event Loop
+* Day 2 – Load Testing
+* Day 3 – Log Batching
+* Day 4 – Redis Queue & Worker
 
 ---
 
 # 🚀 Future Improvements
 
-Possible improvements include:
-
-* implementing **Redis queues**
-* introducing **rate limiting**
-* adding **log filtering**
-* scaling background workers
-* integrating **Kafka or RabbitMQ**
-
-These improvements would allow the system to handle **millions of logs per minute**.
+* Redis-based **rate limiting**
+* Distributed queues (**BullMQ / Kafka**)
+* Horizontal scaling (multiple workers)
+* Advanced log filtering & analytics
 
 ---
 
@@ -342,10 +344,12 @@ Backend Developer
 
 # ⭐ Conclusion
 
-This project demonstrates how to build a **scalable logging API** capable of handling **thousands of concurrent requests** using Node.js.
+This project demonstrates how to build a **scalable, high-throughput logging API** using:
 
-It also highlights how backend engineers evaluate and improve system performance through:
+* Node.js (non-blocking architecture)
+* Redis (queue system)
+* MongoDB (efficient storage)
 
-* load testing
-* runtime observation
-* architectural optimization.
+It highlights how backend engineers design systems that can handle **thousands of concurrent requests** while maintaining **performance and reliability**.
+
+---

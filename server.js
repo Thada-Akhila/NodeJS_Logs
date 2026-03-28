@@ -1,13 +1,12 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import connectDB from './configs/db.js';
-import logsRouter from './routes/postRoutes.js';
-import { startLogWorker } from "./utils/logWorker.js";
-
+import dotenv from "dotenv";
 dotenv.config();
-connectDB();
 
+import express from "express";
+import cors from "cors";
+import connectDB from "./configs/db.js";
+import logsRouter from "./routes/logRoutes.js";
+import { startLogWorker } from "./utils/logWorker.js";
+import redisClient from "./configs/redis.js";
 
 const app = express();
 app.use(express.json());
@@ -27,6 +26,23 @@ app.get('/', (req,res)=>{
 })
 
 
-app.listen(PORT, ()=>{
-    console.log(`Server is running on port ${PORT}`);
-})
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    // ✅ Test Redis here (controlled execution)
+    await redisClient.set("test", "hello");
+    const value = await redisClient.get("test");
+    console.log("Redis Test:", value);
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error("Startup Error:", error);
+  }
+};
+
+startServer();

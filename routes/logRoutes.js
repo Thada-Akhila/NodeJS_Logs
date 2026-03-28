@@ -1,5 +1,5 @@
 import express from "express";
-import { addLog, getLogs  } from "../controllers/postController.js";
+import { addLog, getLogs  } from "../controllers/logController.js";
 
 
 const router = express.Router();
