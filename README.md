@@ -353,3 +353,61 @@ This project demonstrates how to build a **scalable, high-throughput logging API
 It highlights how backend engineers design systems that can handle **thousands of concurrent requests** while maintaining **performance and reliability**.
 
 ---
+---
+
+# 🛡 Rate Limiting (Day 5)
+
+To prevent system overload and abuse, rate limiting was introduced.
+
+## ⚙️ Implementation
+
+The project uses:
+
+```
+express-rate-limit
+```
+
+### Configuration
+
+```javascript
+export const logRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+```
+
+---
+
+## 🧪 Behavior During Load Testing
+
+* First 100 requests → processed
+* Remaining requests → blocked
+
+```
+❌ Too many requests
+```
+
+---
+
+## ⚠️ Important Insight
+
+Strict rate limiting can:
+
+* protect servers ✅
+* but block valid high-volume traffic ❌
+
+---
+
+## 💡 Improvement Strategy
+
+* Use relaxed limits for internal APIs
+* Apply strict limits only for public endpoints
+* Move to Redis-based distributed rate limiting
+
+---
+
+## 🧠 Learning Outcome
+
+* Understood how backend systems handle traffic control
+* Observed real-world behavior under heavy load
+* Learned importance of balancing security and performance
