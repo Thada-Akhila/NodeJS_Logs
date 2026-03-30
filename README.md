@@ -1,128 +1,119 @@
 # 🚀 High Performance Logs API
 
-## 📌 Project Overview
+## 📌 Overview
 
-This project implements a **high-performance logging API** designed to handle **high-volume log ingestion** without blocking the **Node.js event loop**.
+A **production-grade logging system** designed to handle **high-volume concurrent requests** using Node.js.
 
-The system simulates a **production-style logging service**, where thousands of logs can arrive concurrently from multiple services such as:
-
-* authentication services
-* payment systems
-* analytics pipelines
-* monitoring tools
-
-Logs are stored in **MongoDB Atlas** and retrieved using **efficient pagination queries**.
-
-The project also includes **load testing and performance optimization experiments** to understand how backend systems behave under heavy traffic.
+This project simulates real-world backend systems where multiple services generate logs simultaneously, and focuses on **scalability, performance, and system design concepts**.
 
 ---
 
-# 🎯 Learning Goals
+# 🎯 Key Features
 
-This project was built to practice important **backend engineering concepts**, including:
-
-* Handling **high-volume API requests**
-* Understanding **Node.js non-blocking architecture**
-* Performing **API load testing**
-* Observing **CPU and database behavior under stress**
-* Implementing **pagination for large datasets**
-* Improving performance with **batch processing**
-* Using **Redis for scalable queue-based architecture**
+* High-throughput log ingestion API
+* Redis-based queue system
+* Background worker for batch processing
+* MongoDB storage with pagination
+* Load testing for performance analysis
+* Advanced rate limiting strategies
 
 ---
 
 # 🛠 Tech Stack
 
-| Technology    | Purpose             |
-| ------------- | ------------------- |
-| Node.js       | Runtime environment |
-| Express.js    | API server          |
-| MongoDB Atlas | Cloud database      |
-| Mongoose      | MongoDB ODM         |
-| Redis         | In-memory queue     |
-| ioredis       | Redis client        |
-| JavaScript    | Application logic   |
-
----
-
-# ⚡ Redis Integration (Day 4)
-
-To improve performance, Redis is used as a **queue system**.
-
-### Flow:
-
-1. API receives log request
-2. Log is pushed to Redis queue
-3. Background worker pulls logs in batches
-4. Logs are inserted into MongoDB
-
-### Example (Producer)
-
-```javascript
-await redisClient.lpush("logs_queue", JSON.stringify(log));
-```
-
-### Example (Worker)
-
-```javascript
-const log = await redisClient.rpop("logs_queue");
-```
-
-### Benefits:
-
-* Non-blocking API
-* High throughput
-* Reduced database load
-* Better scalability
+| Technology    | Purpose            |
+| ------------- | ------------------ |
+| Node.js       | Runtime            |
+| Express.js    | API framework      |
+| MongoDB Atlas | Database           |
+| Mongoose      | ODM                |
+| Redis         | Queue + Rate Limit |
 
 ---
 
 # 🏗 System Architecture
 
-## Initial Architecture
+## 🔹 Initial Approach
 
 ```
-Client Request
-      ↓
-POST /api/logs
-      ↓
-Express API
-      ↓
-MongoDB insert
+Client → API → MongoDB (1 request = 1 write)
 ```
 
-```
-1 request → 1 database write
-```
+Problem:
 
-This approach creates **database bottlenecks under high traffic**.
+* High database load
+* Poor scalability
 
 ---
 
-## Optimized Architecture (With Redis Queue)
+## 🔹 Optimized Architecture
 
 ```
-Client Request
-      ↓
-API Server (Express)
-      ↓
-Redis Queue (LPUSH)
-      ↓
-Background Worker (RPOP)
-      ↓
+Client
+  ↓
+API Server
+  ↓
+Redis Queue
+  ↓
+Background Worker
+  ↓
 Batch Insert → MongoDB
 ```
 
-### Why Redis?
+---
 
-Redis acts as a **fast in-memory queue** between the API and database.
+# ⚡ Performance Optimization
 
-This ensures:
+### Before:
 
-* Fast API responses (non-blocking)
-* Asynchronous database processing
-* High traffic handling via queue buffering
-* Better scalability and fault tolerance
+```
+10,000 requests → 10,000 DB writes
+```
+
+### After:
+
+```
+10,000 requests → ~100 batch inserts
+```
+
+---
+
+# 🧪 Load Testing
+
+Custom script used to simulate thousands of concurrent requests.
+
+### Observations:
+
+* High CPU usage during load
+* Database bottleneck in naive approach
+* Improved performance with batching
+
+---
+
+# 🛡 Rate Limiting Evolution
+
+## Day 5 – Basic Rate Limiting
+
+* Used express-rate-limit
+* In-memory limiting
+* Not scalable
+
+---
+
+## Day 6 – Redis Rate Limiting
+
+* Distributed rate limiting
+* Atomic counters using Redis
+* Works across multiple servers
+
+---
+
+## Day 7 – Sliding Window Rate Limiter (Final)
+
+* Uses Redis Sorted Sets
+* Tracks request timestamps
+* Prevents burst traffic
+* Production-grade solution
 
 ---
 
@@ -132,19 +123,16 @@ This ensures:
 project
 │
 ├── controllers
-│   └── logController.js
-│
 ├── models
-│   └── Log.js
-│
 ├── routes
-│   └── logRoutes.js
-│
 ├── configs
-│   ├── db.js
-│   └── redis.js
+├── middlewares
+│   ├── rateLimiter.js
+│   ├── redisRateLimiter.js
+│   └── slidingWindowLimiter.js
 │
 ├── utils
+│   ├── logQueue.js
 │   └── logWorker.js
 │
 ├── scripts
@@ -155,183 +143,33 @@ project
 │       ├── day-1-node-event-loop.md
 │       ├── day-2-load-testing.md
 │       ├── day-3-log-batching.md
-│       └── day-4-redis-queue.md
+│       ├── day-5-rate-limiting.md
+│       ├── day-6-redis-rate-limiting.md
+│       └── day-7-sliding-window-rate-limiter.md
 │
-├── server.js
-└── README.md
+└── server.js
 ```
 
 ---
 
-# 🧩 Log Ingestion API
+# 🧠 Backend Concepts Demonstrated
 
-## Endpoint
-
-```
-POST /api/logs
-```
-
-### Example Request
-
-```json
-{
-  "level": "info",
-  "message": "User logged in",
-  "source": "auth-service"
-}
-```
-
-### Validation Rules
-
-* `level` → required
-* `message` → required
-* `source` → required
-
-### Server Processing
-
-1. Validate request body
-2. Add timestamp
-3. Push log to Redis queue
-4. Return success response
-
-### Example Response
-
-```json
-{
-  "success": true,
-  "message": "Log added to Redis queue"
-}
-```
-
----
-
-# 📄 Pagination API
-
-```
-GET /api/logs?page=1&limit=10
-```
-
-### Features
-
-* Pagination support
-* Sorted by newest logs
-* Efficient MongoDB queries
-
-### Example Response
-
-```json
-{
-  "success": true,
-  "page": 1,
-  "limit": 10,
-  "total": 100,
-  "totalPages": 10,
-  "data": []
-}
-```
-
----
-
-# 🧪 Load Testing
-
-A script was created to simulate **high traffic** by sending thousands of requests.
-
-### Key Improvements
-
-* Batch-based request sending
-* Error handling
-* Controlled concurrency
-
----
-
-# 📊 Performance Observations
-
-### CPU Usage
-
-CPU usage increases during high traffic due to:
-
-* HTTP request handling
-* JSON parsing
-* Queue operations
-
----
-
-### MongoDB Writes
-
-Before optimization:
-
-```
-10,000 requests → 10,000 inserts
-```
-
-After optimization:
-
-```
-10,000 requests → Redis queue → ~100 batch inserts
-```
-
----
-
-# ⚡ Performance Optimization
-
-The system uses:
-
-## 1️⃣ Log Batching
-
-* Uses `insertMany()` instead of individual inserts
-
-## 2️⃣ Redis Queue
-
-* Decouples API from database
-
-### Final Flow:
-
-```
-High traffic → Redis queue → Worker → Batch insert
-```
-
-### Benefits:
-
-* Reduced database load
-* Faster API responses
-* Better scalability
-
----
-
-# 🧠 Key Backend Concepts Learned
-
-* Node.js **event loop & concurrency**
-* Handling **high-volume API traffic**
-* **Load testing backend systems**
-* **Queue-based architecture (Redis)**
-* **Batch processing for optimization**
-* Designing **non-blocking systems**
-
----
-
-# 📚 Learning Documentation
-
-Daily learning notes are available in:
-
-```
-docs/learning/
-```
-
-### Covered Topics:
-
-* Day 1 – Node.js Event Loop
-* Day 2 – Load Testing
-* Day 3 – Log Batching
-* Day 4 – Redis Queue & Worker
+* Event Loop & Non-blocking I/O
+* High concurrency handling
+* Load testing & performance tuning
+* Queue-based architecture
+* Batch processing
+* Distributed rate limiting
+* Sliding window algorithms
 
 ---
 
 # 🚀 Future Improvements
 
-* Redis-based **rate limiting**
-* Distributed queues (**BullMQ / Kafka**)
-* Horizontal scaling (multiple workers)
-* Advanced log filtering & analytics
+* Token Bucket rate limiter
+* Kafka / RabbitMQ integration
+* Horizontal scaling
+* API Gateway integration
 
 ---
 
@@ -342,72 +180,13 @@ Backend Developer
 
 ---
 
-# ⭐ Conclusion
+# ⭐ Final Thoughts
 
-This project demonstrates how to build a **scalable, high-throughput logging API** using:
+This project demonstrates how real backend systems are designed to:
 
-* Node.js (non-blocking architecture)
-* Redis (queue system)
-* MongoDB (efficient storage)
+* handle high traffic
+* prevent overload
+* scale efficiently
+* maintain performance under stress
 
-It highlights how backend engineers design systems that can handle **thousands of concurrent requests** while maintaining **performance and reliability**.
-
----
----
-
-# 🛡 Rate Limiting (Day 5)
-
-To prevent system overload and abuse, rate limiting was introduced.
-
-## ⚙️ Implementation
-
-The project uses:
-
-```
-express-rate-limit
-```
-
-### Configuration
-
-```javascript
-export const logRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
-```
-
----
-
-## 🧪 Behavior During Load Testing
-
-* First 100 requests → processed
-* Remaining requests → blocked
-
-```
-❌ Too many requests
-```
-
----
-
-## ⚠️ Important Insight
-
-Strict rate limiting can:
-
-* protect servers ✅
-* but block valid high-volume traffic ❌
-
----
-
-## 💡 Improvement Strategy
-
-* Use relaxed limits for internal APIs
-* Apply strict limits only for public endpoints
-* Move to Redis-based distributed rate limiting
-
----
-
-## 🧠 Learning Outcome
-
-* Understood how backend systems handle traffic control
-* Observed real-world behavior under heavy load
-* Learned importance of balancing security and performance
+It reflects **practical backend engineering and system design thinking**.
