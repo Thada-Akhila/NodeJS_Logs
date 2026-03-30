@@ -1,11 +1,13 @@
 import express from "express";
 import { addLog, getLogs } from "../controllers/logController.js";
-import { logRateLimiter } from "../middlewares/rateLimiter.js";
+import { redisRateLimiter } from "../middlewares/redisRateLimiter.js";
 
 const router = express.Router();
 
-// 🔥 APPLY RATE LIMITER HERE
-router.post("/", logRateLimiter, addLog);
+//  APPLY RATE LIMITER HERE
+
+
+router.post("/", redisRateLimiter, addLog);
 
 router.get("/", getLogs);
 
