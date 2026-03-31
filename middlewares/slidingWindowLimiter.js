@@ -2,25 +2,20 @@ import redisClient from "../configs/redis.js";
 
 export const slidingWindowLimiter = async (req, res, next) => {
   try {
-    const ip = req.ip;
+    const key = `rate_limit:${req.ip}`;
+    const windowSize = 60 * 1000; // 1 min
+    const maxRequests = 10;
 
-    const WINDOW_SIZE = 60; // seconds
-    const MAX_REQUESTS = 200;
-
-    const key = `rate_limit:${ip}`;
     const now = Date.now();
+    const windowStart = now - windowSize;
 
     // 1. Remove old requests
-    await redisClient.zRemRangeByScore(
-      key,
-      0,
-      now - WINDOW_SIZE * 1000
-    );
+    await redisClient.zremrangebyscore(key, 0, windowStart);
 
-    // 2. Count current requests
-    const currentRequests = await redisClient.zCard(key);
+    // 2. Count requests in window
+    const requestCount = await redisClient.zcard(key);
 
-    if (currentRequests >= MAX_REQUESTS) {
+    if (requestCount >= maxRequests) {
       return res.status(429).json({
         success: false,
         message: "Too many requests (Sliding Window)"
@@ -28,13 +23,10 @@ export const slidingWindowLimiter = async (req, res, next) => {
     }
 
     // 3. Add current request
-    await redisClient.zAdd(key, {
-      score: now,
-      value: `${now}-${Math.random()}`
-    });
+    await redisClient.zadd(key, now, `${now}-${Math.random()}`);
 
     // 4. Set expiry
-    await redisClient.expire(key, WINDOW_SIZE);
+    await redisClient.expire(key, 60);
 
     next();
 

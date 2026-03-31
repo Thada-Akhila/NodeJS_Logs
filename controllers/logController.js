@@ -1,6 +1,6 @@
 import Log from "../models/Log.js";
-
 import redisClient from "../configs/redis.js";
+import { getCache, setCache } from "../utils/cache.js";
 
 export const addLog = async (req, res) => {
   try {
@@ -20,8 +20,17 @@ export const addLog = async (req, res) => {
       timestamp: new Date()
     });
 
-    //  Push to Redis Queue
+    // Push to Redis Queue
     await redisClient.lpush("logs_queue", log);
+
+    //  Invalidate cache using tracked keys (BEST APPROACH)
+    const keys = await redisClient.smembers("logs_cache_keys");
+
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
+
+    await redisClient.del("logs_cache_keys");
 
     res.status(201).json({
       success: true,
@@ -37,12 +46,12 @@ export const addLog = async (req, res) => {
 };
 
 
+
 export const getLogs = async (req, res) => {
   try {
-
     let {
-      page=1,
-      limit=10,
+      page = 1,
+      limit = 10,
       search = "",
       sort
     } = req.query;
@@ -52,18 +61,28 @@ export const getLogs = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    let query = {};
-
     // SEARCH
+    let query = {};
     if (search) {
       query.message = { $regex: search, $options: "i" };
     }
 
     // SORT
     let sortOption = { createdAt: -1 };
-
-    
     if (sort === "newest") sortOption = { createdAt: -1 };
+
+    //  Unique cache key
+    const cacheKey = `logs:${page}:${limit}:${search}:${sort}`;
+
+    // 1. Try cache
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      console.log("⚡ Cache HIT");
+      return res.json(cached);
+    }
+
+    // 2. DB hit
+    console.log("🐢 Cache MISS → DB hit");
 
     const logs = await Log.find(query)
       .sort(sortOption)
@@ -72,12 +91,20 @@ export const getLogs = async (req, res) => {
 
     const total = await Log.countDocuments(query);
 
-    res.json({
+    const responseData = {
       page,
       total,
       totalPages: Math.ceil(total / limit),
       data: logs
-    });
+    };
+
+    // 3. Save cache
+    await setCache(cacheKey, responseData, 60);
+
+    //  Track cache key
+    await redisClient.sadd("logs_cache_keys", cacheKey);
+
+    res.json(responseData);
 
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -190,3 +190,62 @@ This project demonstrates how real backend systems are designed to:
 * maintain performance under stress
 
 It reflects **practical backend engineering and system design thinking**.
+
+
+## 🚀 Day 8 – Redis Caching & Performance Optimization
+
+### 🔥 Features Added
+
+* Implemented **Redis caching (Cache-Aside pattern)**
+* Reduced database load significantly
+* Designed **unique cache keys for pagination & filtering**
+* Implemented **efficient cache invalidation using Redis SET**
+* Avoided blocking Redis operations like `KEYS`
+
+---
+
+### ⚡ Caching Flow
+
+1. Client requests logs
+2. Server checks Redis cache
+3. If cache HIT → return instantly ⚡
+4. If cache MISS → fetch from DB 🐢
+5. Store response in Redis
+6. Track cache key for invalidation
+
+---
+
+### 🧠 Cache Invalidation Strategy
+
+* All cache keys stored in:
+
+  ```
+  logs_cache_keys (Redis SET)
+  ```
+* On new log insertion:
+
+  * Fetch all keys
+  * Delete them
+  * Clear tracking set
+
+---
+
+### 📈 Performance Impact
+
+* Faster API responses
+* Reduced MongoDB load
+* Scalable caching mechanism
+
+---
+
+### 🏗️ Updated Architecture
+
+Client → API → Rate Limiter → Redis Cache → MongoDB
+↓
+Redis Queue → Worker → DB
+
+---
+
+### 💬 
+
+> Designed a scalable caching layer using Redis with efficient cache invalidation, improving system performance and ensuring data consistency.
