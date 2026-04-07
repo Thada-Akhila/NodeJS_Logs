@@ -27,7 +27,7 @@ export const addLog = async (req, res) => {
     const keys = await redisClient.smembers("logs_cache_keys");
 
     if (keys.length > 0) {
-      await redisClient.del(keys);
+      await redisClient.del(...keys);
     }
 
     await redisClient.del("logs_cache_keys");
@@ -72,7 +72,7 @@ export const getLogs = async (req, res) => {
     if (sort === "newest") sortOption = { createdAt: -1 };
 
     //  Unique cache key
-    const cacheKey = `logs:${page}:${limit}:${search}:${sort}`;
+    const cacheKey = `logs:${page}:${limit}:${search || "all"}:${sort || "default"}`;
 
     // 1. Try cache
     const cached = await getCache(cacheKey);
@@ -102,7 +102,10 @@ export const getLogs = async (req, res) => {
     await setCache(cacheKey, responseData, 60);
 
     //  Track cache key
-    await redisClient.sadd("logs_cache_keys", cacheKey);
+   
+    if (cacheKey) {
+  await redisClient.sadd("logs_cache_keys", cacheKey);
+}
 
     res.json(responseData);
 

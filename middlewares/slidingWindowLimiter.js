@@ -22,6 +22,9 @@ export const slidingWindowLimiter = async (req, res, next) => {
       });
     }
 
+
+    console.log("➡️ ZADD running");
+
     // 3. Add current request
     await redisClient.zadd(key, now, `${now}-${Math.random()}`);
 

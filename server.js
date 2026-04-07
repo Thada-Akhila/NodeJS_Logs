@@ -5,14 +5,18 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./configs/db.js";
 import logsRouter from "./routes/logRoutes.js";
+import authRoutes from './routes/authRoutes.js'
 import { startLogWorker } from "./utils/logWorker.js";
 import redisClient from "./configs/redis.js";
+import { sessionMiddleware } from "./configs/session.js";
 
 const app = express();
 app.use(express.json());
 
+app.use(sessionMiddleware);
 
 
+app.use('/api/auth', authRoutes);
 app.use('/api/logs', logsRouter);
 startLogWorker();
 

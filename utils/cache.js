@@ -12,7 +12,10 @@ export const getCache = async (key) => {
 
 export const setCache = async (key, value, ttl = 60) => {
   try {
-    await redisClient.set(key, JSON.stringify(value), "EX", ttl);
+
+    console.log("➡️ SET CACHE", key);
+
+      await redisClient.set(key, JSON.stringify(value), "EX", ttl);
   } catch (err) {
     console.error("Cache SET error:", err);
   }
