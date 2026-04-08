@@ -79,6 +79,16 @@ export const logout = async (req, res) => {
   res.json({ message: "Logged out" });
 };
 
+export const getProfile = (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  res.json({
+    message: "Profile fetched",
+    user: req.session.user
+  });
+};
 
 
 

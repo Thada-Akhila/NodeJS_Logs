@@ -6,6 +6,7 @@ import {
   getProfile
 } from "../controllers/authController.js";
 import { verifyJWT } from "../middlewares/authMiddleware.js";
+import { refreshToken } from "../controllers/authController.js";
 
 
 const router = express.Router();
